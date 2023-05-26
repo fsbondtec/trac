@@ -25,7 +25,7 @@ from trac.cache import cached
 from trac.config import BoolOption, IntOption, PathOption, Option
 from trac.core import Component, TracError, implements
 from trac.util import shorten_line
-from trac.util.datefmt import FixedOffset, to_timestamp, format_datetime
+from trac.util.datefmt import FixedOffset, to_timestamp, format_datetime, from_utimestamp
 from trac.util.text import to_unicode, exception_to_unicode
 from trac.util.translation import _
 from trac.versioncontrol.api import Changeset, Node, Repository, \
@@ -82,7 +82,19 @@ class GitCachedRepository(CachedRepository):
                     yield rev_csets.pop(rev)
 
     def get_changeset(self, rev):
-        return GitCachedChangeset(self, self.normalize_rev(rev), self.env)
+        rev = self.normalize_rev(rev)
+        drev = self.db_rev(rev)
+        for _date, author, message in self.env.db_query("""
+                SELECT time, author, message FROM revision
+                WHERE repos=%s AND rev=%s
+                """, (self.id, drev)):
+            date = from_utimestamp(_date)
+            rev1 = self.rev_db(rev)
+            return CachedChangeset(self, rev1, message, author, date, self.env)
+        else:
+            self.log.debug("Missing revision record (%r, %r) in '%s'",
+                            self.id, drev, _norm_reponame(self))
+            raise NoSuchChangeset(rev)
 
     def sync(self, feedback=None, clean=False):
         if clean:

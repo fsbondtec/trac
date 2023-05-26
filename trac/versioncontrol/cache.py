@@ -71,19 +71,20 @@ class CachedRepository(Repository):
         return self.repos.get_path_url(path, rev)
 
     def get_changeset(self, rev):
-        return CachedChangeset(self, self.normalize_rev(rev), self.env)
+        assert False
 
     def get_changeset_uid(self, rev):
         return self.repos.get_changeset_uid(rev)
 
     def get_changesets(self, start, stop):
-        for rev, in self.env.db_query("""
-                SELECT rev FROM revision
+        for rev, _date, author, message in self.env.db_query("""
+                SELECT rev, time, author, message FROM revision
                 WHERE repos=%s AND time >= %s AND time < %s
                 ORDER BY time DESC, rev DESC
                 """, (self.id, to_utimestamp(start), to_utimestamp(stop))):
             try:
-                yield self.get_changeset(rev)
+                date = from_utimestamp(_date)
+                yield CachedChangeset(self, rev, message, author, date, self.env)
             except NoSuchChangeset:
                 pass # skip changesets currently being resync'ed
 
@@ -491,21 +492,9 @@ class CachedRepository(Repository):
 
 class CachedChangeset(Changeset):
 
-    def __init__(self, repos, rev, env):
+    def __init__(self, repos, rev, message, author, date, env):
         self.env = env
-        drev = repos.db_rev(rev)
-        for _date, author, message in self.env.db_query("""
-                SELECT time, author, message FROM revision
-                WHERE repos=%s AND rev=%s
-                """, (repos.id, drev)):
-            date = from_utimestamp(_date)
-            Changeset.__init__(self, repos, repos.rev_db(rev), message, author,
-                               date)
-            break
-        else:
-            repos.log.debug("Missing revision record (%r, %r) in '%s'",
-                            repos.id, drev, _norm_reponame(repos))
-            raise NoSuchChangeset(rev)
+        Changeset.__init__(self, repos, rev, message, author, date)
 
     def get_changes(self):
         for path, kind, change, base_path, base_rev in sorted(
