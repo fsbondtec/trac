@@ -35,6 +35,7 @@ from trac.admin import AdminCommandError, IAdminCommandProvider, PrefixList, \
                        console_datetime_format, get_dir_list
 from trac.config import BoolOption, IntOption
 from trac.core import *
+from trac.cache import cached
 from trac.mimeview import *
 from trac.perm import PermissionError, IPermissionPolicy
 from trac.resource import *
@@ -158,14 +159,30 @@ class Attachment(object):
         self.author = author
         self.ipnr = ipnr
 
-    def _fetch(self, filename):
-        for row in self.env.db_query("""
-                SELECT filename, description, size, time, author, ipnr
-                FROM attachment WHERE type=%s AND id=%s AND filename=%s
+    def reset_attachments_info(self):
+        """Invalidate attachments info cache."""
+        del self.attachments_info
+
+    @cached
+    def attachments_info(self, db):
+        ret = {}
+        rows = self.env.db_query("""
+                SELECT type, id, filename, description, size, time, author, ipnr
+                FROM attachment
                 ORDER BY time
-                """, (self.parent_realm, unicode(self.parent_id), filename)):
+                """)
+        for type, id, filename, description, size, time, author, ipnr in rows:
+            key = (type, id, filename)
+            if key in ret:
+                continue
+            ret[key] = (filename, description, size, time, author, ipnr)
+        return ret
+
+    def _fetch(self, filename):
+        key = (self.parent_realm, unicode(self.parent_id), filename)
+        if key in self.attachments_info:
+            row = self.attachments_info[key]
             self._from_database(*row)
-            break
         else:
             self.filename = filename
             raise ResourceNotFound(_("Attachment '%(title)s' does not exist.",
@@ -241,6 +258,8 @@ class Attachment(object):
 
         self.env.log.info("Attachment removed: %s", self.title)
 
+        self.reset_attachments_info()
+
         for listener in AttachmentModule(self.env).change_listeners:
             listener.attachment_deleted(self)
 
@@ -289,6 +308,8 @@ class Attachment(object):
                                                           self.filename)
 
         self.env.log.info("Attachment reparented: %s", self.title)
+
+        self.reset_attachments_info()
 
         for listener in AttachmentModule(self.env).change_listeners:
             if hasattr(listener, 'attachment_reparented'):
@@ -341,6 +362,8 @@ class Attachment(object):
 
                 self.env.log.info("New attachment: %s by %s", self.title,
                                   self.author)
+
+        self.reset_attachments_info()
 
         for listener in AttachmentModule(self.env).change_listeners:
             listener.attachment_added(self)
