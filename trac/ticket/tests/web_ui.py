@@ -116,6 +116,7 @@ class TicketModuleTestCase(unittest.TestCase):
                 db("DELETE FROM enum WHERE type=%s", (field_name,))
         tktsys = TicketSystem(self.env)
         tktsys.reset_ticket_fields()
+        tktsys.reset_tickets_summary()
         del tktsys.custom_fields
 
         req = MockRequest(self.env, path_info='/newticket')

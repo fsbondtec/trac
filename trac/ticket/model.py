@@ -739,6 +739,7 @@ class AbstractEnum(object):
                 except ValueError:
                     pass # Ignore cast error for this non-essential operation
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
         self.value = self._old_value = None
         self.name = self._old_name = None
 
@@ -763,6 +764,7 @@ class AbstractEnum(object):
             db("INSERT INTO enum (type, name, value) VALUES (%s, %s, %s)",
                (self.type, self.name, self.value))
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
         self._old_name = self.name
         self._old_value = self.value
@@ -788,6 +790,7 @@ class AbstractEnum(object):
                    % (self.ticket_col, self.ticket_col),
                    (self.name, self._old_name))
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
         self._old_name = self.name
         self._old_value = self.value
@@ -873,6 +876,7 @@ class Component(object):
             db("DELETE FROM component WHERE name=%s", (self.name,))
             self.name = self._old_name = None
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
     def insert(self, db=None):
         """Insert a new component.
@@ -892,6 +896,7 @@ class Component(object):
                   """, (self.name, self.owner, self.description))
             self._old_name = self.name
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
     def update(self, db=None):
         """Update the component.
@@ -916,6 +921,7 @@ class Component(object):
                    (self.name, self._old_name))
                 self._old_name = self.name
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
     @classmethod
     def select(cls, env, db=None):
@@ -1047,6 +1053,7 @@ class Milestone(object):
             self._old['name'] = None
             del self.cache.milestones
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
         for listener in TicketSystem(self.env).milestone_change_listeners:
             listener.milestone_deleted(self)
@@ -1069,6 +1076,7 @@ class Milestone(object):
                         to_utimestamp(self.completed), self.description))
             self.checkin()
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
         for listener in TicketSystem(self.env).milestone_change_listeners:
             listener.milestone_created(self)
@@ -1102,6 +1110,7 @@ class Milestone(object):
             self.checkin()
         # Fields need reset if renamed or completed/due changed
         TicketSystem(self.env).reset_ticket_fields()
+        TicketSystem(self.env).reset_tickets_summary()
 
         old_values = dict((k, v) for k, v in old.iteritems()
                           if getattr(self, k) != v)
@@ -1209,6 +1218,7 @@ class Version(object):
             db("DELETE FROM version WHERE name=%s", (self.name,))
             self.name = self._old_name = None
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
     def insert(self, db=None):
         """Insert a new version.
@@ -1227,6 +1237,7 @@ class Version(object):
                 (self.name, to_utimestamp(self.time), self.description))
             self._old_name = self.name
             TicketSystem(self.env).reset_ticket_fields()
+            TicketSystem(self.env).reset_tickets_summary()
 
     def update(self, db=None):
         """Update the version.
@@ -1252,6 +1263,7 @@ class Version(object):
                 self._old_name = self.name
         # Fields need reset if renamed or if time is changed
         TicketSystem(self.env).reset_ticket_fields()
+        TicketSystem(self.env).reset_tickets_summary()
 
     @classmethod
     def select(cls, env, db=None):

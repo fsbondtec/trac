@@ -472,6 +472,21 @@ class TicketSystem(Component):
                                       Ranges.RE_STR),
             lambda x, y, z: self._format_link(x, 'ticket', y[1:], y, z))
 
+    def reset_tickets_summary(self):
+        """Invalidate tickets summary cache."""
+        del self.tickets_summary
+
+    @cached
+    def tickets_summary(self, db):
+        ret = {}
+        rows = self.env.db_query("""
+                SELECT id, type, summary, status, resolution
+                FROM ticket
+                """)
+        for num, type, summary, status, resolution in rows:
+            ret[num] = (type, summary, status, resolution)
+        return ret
+
     def _format_link(self, formatter, ns, target, label, fullmatch=None):
         intertrac = formatter.shorthand_intertrac_helper(ns, target, label,
                                                          fullmatch)
@@ -486,18 +501,12 @@ class TicketSystem(Component):
                 from trac.ticket.model import Ticket
                 if Ticket.id_is_valid(num) and \
                         'TICKET_VIEW' in formatter.perm(ticket):
-                    # TODO: attempt to retrieve ticket view directly,
-                    #       something like: t = Ticket.view(num)
-                    for type, summary, status, resolution in \
-                            self.env.db_query("""
-                            SELECT type, summary, status, resolution
-                            FROM ticket WHERE id=%s
-                            """, (str(num),)):
-                        title = self.format_summary(summary, status,
-                                                    resolution, type)
-                        href = formatter.href.ticket(num) + params + fragment
-                        return tag.a(label, title=title, href=href,
-                                     class_='%s ticket' % status)
+                    type, summary, status, resolution = self.tickets_summary[num]
+                    title = self.format_summary(summary, status,
+                                                resolution, type)
+                    href = formatter.href.ticket(num) + params + fragment
+                    return tag.a(label, title=title, href=href,
+                                 class_='%s ticket' % status)
             else:
                 ranges = str(r)
                 if params:

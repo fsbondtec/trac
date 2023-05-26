@@ -87,6 +87,7 @@ class QueryTestCase(unittest.TestCase):
                 severity.insert()
         tktsys = TicketSystem(self.env)
         tktsys.reset_ticket_fields()
+        tktsys.reset_tickets_summary()
         del tktsys.custom_fields
 
     def tearDown(self):
@@ -849,6 +850,7 @@ ORDER BY COALESCE(t.id,0)=0,t.id""")
                    (name if name != 'type' else 'ticket_type',))
         tktsys = TicketSystem(self.env)
         tktsys.reset_ticket_fields()
+        tktsys.reset_tickets_summary()
         del tktsys.custom_fields
         with self.env.db_transaction as db:
             for value in ('foo', 'bar', 'baz', 'blah'):
