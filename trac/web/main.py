@@ -535,7 +535,7 @@ def dispatch_request(environ, start_response):
         return _dispatch_request(req, env, env_error)
     finally:
         translation.deactivate()
-        if env and not run_once:
+        if env and run_once:
             env.shutdown(threading._get_ident())
             # Now it's a good time to do some clean-ups
             #
