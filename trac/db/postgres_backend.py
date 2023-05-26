@@ -291,8 +291,7 @@ class PostgreSQLConnection(ConnectionWrapper):
         return _like_escape_re.sub(r'/\1', text)
 
     def ping(self):
-        cursor = self.cnx.cursor()
-        cursor.execute('SELECT 1')
+        self.cnx.isolation_level
 
     def prefix_match(self):
         """Return a case sensitive prefix-matching operator."""
