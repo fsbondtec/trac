@@ -599,22 +599,22 @@ class RepositoryManager(Component):
         rtype = repoinfo.get('type') or self.repository_type
 
         # get a Repository for the reponame (use a thread-level cache)
-        with self.env.db_transaction: # prevent possible deadlock, see #4465
-            with self._lock:
-                tid = threading._get_ident()
-                if tid in self._cache:
-                    repositories = self._cache[tid]
-                else:
-                    repositories = self._cache[tid] = {}
-                repos = repositories.get(reponame)
-                if not repos:
+        with self._lock:
+            tid = threading._get_ident()
+            if tid in self._cache:
+                repositories = self._cache[tid]
+            else:
+                repositories = self._cache[tid] = {}
+            repos = repositories.get(reponame)
+            if not repos:
+                with self.env.db_transaction: # prevent possible deadlock, see #4465
                     if not os.path.isabs(rdir):
                         rdir = os.path.join(self.env.path, rdir)
                     connector = self._get_connector(rtype)
                     repos = connector.get_repository(rtype, rdir,
                                                      repoinfo.copy())
                     repositories[reponame] = repos
-                return repos
+            return repos
 
     def get_repository_by_path(self, path):
         """Retrieve a matching `Repository` for the given `path`.
